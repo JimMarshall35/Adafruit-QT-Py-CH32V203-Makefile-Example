@@ -102,8 +102,8 @@ void USART_Printf_Init(uint32_t baudrate)
     GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 #elif(DEBUG == DEBUG_UART2)
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+    // RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+    // RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
 
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;

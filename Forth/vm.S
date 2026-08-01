@@ -90,9 +90,6 @@
 .global vm_flags
     # IMPORTANT! REGISTERS USED BY THE INTERPRETER:
 
-    # Until I can get C Style defines to work you'll just have to read this, assembler.
-    # The following registers must not be touched:
-
     # s0 - instruction pointer
     # s1 - data stack base pointer
     # s2 - data stack size

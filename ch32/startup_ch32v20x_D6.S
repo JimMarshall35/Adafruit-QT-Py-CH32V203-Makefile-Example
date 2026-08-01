@@ -31,6 +31,17 @@
 #define RCC_SW 0x00000003 /* SW[1:0] bits (System clock Switch) */
 #define RCC_SW_PLL 0x00000002 /* PLL selected as system clock */
 
+
+#define R32_RCC_APB1PCENR 0x4002101C
+#define R32_RCC_APB2PCENR 0x40021018
+
+/* APB1 peripherals */
+#define RCC_APB1Periph_USART2 0x00020000
+
+/* APB2 peripherals */
+#define RCC_APB2Periph_GPIOA 0x00000004
+
+
 .macro or_exten_ctr val
     li t0, R32_EXTEN_CTR
     lw t0, (t0)
@@ -73,6 +84,48 @@
     li t1, \val
     and t0, t0, t1
     li t1, R32_RCC_CFGR0
+    sw t0, (t1)
+.endm
+
+.macro Enable_RCC_APB2PeriphClock peripheral
+    // RCC->APB2PCENR |= RCC_APB2Periph;
+    li t0, R32_RCC_APB2PCENR
+    li t1, \peripheral
+    lw t0, (t0)
+    or t0, t0, t1
+    li t1, R32_RCC_APB2PCENR
+    sw t0, (t1)
+
+.endm
+
+.macro Disable_RCC_APB2PeriphClock peripheral
+    // RCC->APB2PCENR &= ~RCC_APB2Periph;
+    li t0, R32_RCC_APB2PCENR
+    li t1, ~\peripheral
+    lw t0, (t0)
+    and t0, t0, t1
+    li t1, R32_RCC_APB2PCENR
+    sw t0, (t1)
+
+.endm
+
+.macro Enable_RCC_APB1PeriphClock peripheral
+    // RCC->APB1PCENR |= RCC_APB1Periph;
+    li t0, R32_RCC_APB1PCENR
+    li t1, \peripheral
+    lw t0, (t0)
+    or t0, t0, t1
+    li t1, R32_RCC_APB1PCENR
+    sw t0, (t1)
+.endm
+
+.macro Disable_RCC_APB1PeriphClock peripheral
+    // RCC->APB1PCENR &= ~RCC_APB1Periph;
+    li t0, R32_RCC_APB1PCENR
+    li t1, ~\peripheral
+    lw t0, (t0)
+    and t0, t0, t1
+    li t1, R32_RCC_APB1PCENR
     sw t0, (t1)
 .endm
 
@@ -366,7 +419,12 @@ handle_reset:
     bne t0, t1, 1b
 
     // SystemInit in asm end
-    
+    // RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+    // RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+
+
+    Enable_RCC_APB1PeriphClock RCC_APB1Periph_USART2
+    Enable_RCC_APB2PeriphClock RCC_APB2Periph_GPIOA
 
 
 	la t0, main
