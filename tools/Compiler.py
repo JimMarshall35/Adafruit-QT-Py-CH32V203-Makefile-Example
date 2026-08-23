@@ -130,7 +130,7 @@ class CompiledWord:
             # add word body
             lines += [x.txt for x in self.body]
             # add return
-            lines.append("    .word return_impl")
+            lines.append("    impl_ptr return_impl")
         
         return lines
     def add_body_line(self, line):
@@ -266,15 +266,15 @@ class Program:
         self.constantDefines = dict()
 
 def do_found_word(prg, token):
-    lineTxt = f"    .word {word_name_map[token.string].name}_impl"
+    lineTxt = f"    impl_ptr {word_name_map[token.string].name}_impl"
     prg.append_line_to_current(lineTxt)
 
 def do_unfound_word(prg, token):
-    lineTxt = f"    .word {token.string}_impl"
+    lineTxt = f"    impl_ptr {token.string}_impl"
     prg.append_line_to_current(lineTxt)
 
 def do_if(prg, tokenItr, currentToken):
-    prg.append_line_to_current(f"1:  .word {branch0_word_name}")
+    prg.append_line_to_current(f"1:  impl_ptr {branch0_word_name}")
     branch_offset_line = prg.append_line_to_current(f"    CalcBranchForwardToLabel {unset_label_phrase}")
     prg.push_control_flow(branch_offset_line, ControlFlowType.If)
 
@@ -298,7 +298,7 @@ def do_else(prg, tokenItr, currentToken):
     if ctrl_flow.type != ControlFlowType.If:
         prg.errors.append(f"Line {currentToken.srcLine}: {control_flow_type_names[ctrl_flow.type]} on control flow stack, 'if' expected")
         return
-    prg.append_line_to_current(f"1:  .word {branch_word_name}")
+    prg.append_line_to_current(f"1:  impl_ptr {branch_word_name}")
     branch_offset_line = prg.append_line_to_current(f"    CalcBranchForwardToLabel {unset_label_phrase}")
     prg.push_control_flow(branch_offset_line, ControlFlowType.Else)
     label = prg.get_control_flow_label_for_current(ControlFlowType.Else)
@@ -318,13 +318,13 @@ def do_until(prg, tokenItr, currentToken):
     if ctrl_flow.type != ControlFlowType.Begin:
         prg.errors.append(f"Line {currentToken.srcLine}: {control_flow_type_names[ctrl_flow.type]} on control flow stack, 'begin' expected")
         return
-    prg.append_line_to_current(f"1:  .word {branch0_word_name}")
+    prg.append_line_to_current(f"1:  impl_ptr {branch0_word_name}")
     branch_offset_line = prg.append_line_to_current(f"    CalcBranchBackToLabel {unset_label_phrase}")
     branch_offset_line.back_patch(ctrl_flow.compiledLine.get_string())
 
 def do_do(prg, tokenItr, currentToken):
     # branch to test
-    prg.append_line_to_current(f"1:  .word {branch_word_name}")
+    prg.append_line_to_current(f"1:  impl_ptr {branch_word_name}")
     branch_offset_line = prg.append_line_to_current(f"    CalcBranchForwardToLabel {unset_label_phrase}")
     prg.push_control_flow(branch_offset_line, ControlFlowType.Do)
     # push a label - the start of the loop
@@ -332,9 +332,9 @@ def do_do(prg, tokenItr, currentToken):
     prg.push_control_flow(label, ControlFlowType.Do)
     prg.append_line_to_current(label)
     # compile code to push i onto return stack
-    prg.append_line_to_current(f"    .word {push_return_stack_word_name}")
+    prg.append_line_to_current(f"    impl_ptr {push_return_stack_word_name}")
     # compile code to push limit onto return stack
-    prg.append_line_to_current(f"    .word {push_return_stack_word_name}")
+    prg.append_line_to_current(f"    impl_ptr {push_return_stack_word_name}")
 
 def do_loop(prg, tokenItr, currentToken):
     if len(prg.control_flow_stack) < 2:
@@ -346,26 +346,26 @@ def do_loop(prg, tokenItr, currentToken):
         prg.errors.append(f"Line {currentToken.srcLine}: loop expects the 2 control flow items on the stack are of type 'Do' but got [{control_flow_type_names[label.type]}, {control_flow_type_names[branch.type]}]")
         return
     # compile code to pop limit
-    prg.append_line_to_current(f"    .word {pop_return_stack_word_name}")
+    prg.append_line_to_current(f"    impl_ptr {pop_return_stack_word_name}")
     # compile code to pop i
-    prg.append_line_to_current(f"    .word {pop_return_stack_word_name}")
+    prg.append_line_to_current(f"    impl_ptr {pop_return_stack_word_name}")
     # compile code to increment i
-    prg.append_line_to_current(f"    .word {literal_word_name}")
-    prg.append_line_to_current(f"    .word 1")
-    prg.append_line_to_current(f"    .word {add_word_name}")
+    prg.append_line_to_current(f"    impl_ptr {literal_word_name}")
+    prg.append_line_to_current(f"    impl_ptr 1")
+    prg.append_line_to_current(f"    impl_ptr {add_word_name}")
     # we're now at the test label
     testLabel = prg.get_control_flow_label_for_current(ControlFlowType.Loop, "test")
     branchToTest.compiledLine.back_patch(testLabel)
     prg.append_line_to_current(testLabel)
     # compile code to compare i and limit and branch if not equal
-    prg.append_line_to_current(f"    .word {twodup_word_name}")
-    prg.append_line_to_current(f"    .word {equals_word_name}")
-    prg.append_line_to_current(f"1:  .word {branch0_word_name}")
+    prg.append_line_to_current(f"    impl_ptr {twodup_word_name}")
+    prg.append_line_to_current(f"    impl_ptr {equals_word_name}")
+    prg.append_line_to_current(f"1:  impl_ptr {branch0_word_name}")
     branch_offset_line = prg.append_line_to_current(f"    CalcBranchBackToLabel {unset_label_phrase}")
     branch_offset_line.back_patch(loopStartLabel.compiledLine)
     # compile code to cleanup stack now loop has ended
-    prg.append_line_to_current(f"    .word {drop_word_name}")
-    prg.append_line_to_current(f"    .word {drop_word_name}")
+    prg.append_line_to_current(f"    impl_ptr {drop_word_name}")
+    prg.append_line_to_current(f"    impl_ptr {drop_word_name}")
 
 def string_is_valid_number(string):
     return string.isnumeric() or (string[0] == '-' and string[1:].isnumeric())
@@ -375,7 +375,7 @@ def do_var(prg, tokenItr, currentToken):
     #    PushDataStack t1
     #    end_word
     #flags_data:
-    #    .word 0
+    #    impl_ptr 0
     wordName = next(tokenItr)
     val = next(tokenItr)
     if(not string_is_valid_number(val.string)):
@@ -389,7 +389,7 @@ def do_var(prg, tokenItr, currentToken):
     prg.append_line_to_current(f"    end_word")
     prg.append_line_to_current(f".section .data")
     prg.append_line_to_current(f"{wordName.string}_data:")
-    prg.append_line_to_current(f"    .word {val.string}")
+    prg.append_line_to_current(f"    impl_ptr {val.string}")
     prg.append_line_to_current(f".section .text")
     
 def do_buf(prg, tokenItr, currentToken):
@@ -448,12 +448,12 @@ def do_asm_name(prg, tokenItr, currentToken):
     prg.set_current_word_assembler_label(name)
     
 def do_forth_data_section(prg, tokenItr, currentToken):
-    prg.append_line_to_current(f"    .word {literal_word_name}")
-    prg.append_line_to_current(f"    .word begin_forth_data_section")
+    prg.append_line_to_current(f"    impl_ptr {literal_word_name}")
+    prg.append_line_to_current(f"    impl_ptr begin_forth_data_section")
 
 def do_forth_data_section_initial_vals(prg, tokenItr, currentToken):
-    prg.append_line_to_current(f"    .word {literal_word_name}")
-    prg.append_line_to_current(f"    .word begin_forth_data_section_data")
+    prg.append_line_to_current(f"    impl_ptr {literal_word_name}")
+    prg.append_line_to_current(f"    impl_ptr begin_forth_data_section_data")
 
 pseudo_tokens = {
     "if" : do_if,
@@ -532,7 +532,7 @@ def build_word_name_map(headers):
             word_name_map[h.code] = h
 
 def compile_literal(prg, literalVal):
-    prg.append_line_to_current(f"    .word {literal_word_name}")
+    prg.append_line_to_current(f"    impl_ptr {literal_word_name}")
     prg.append_line_to_current(f"    .word {literalVal}")
 
 def is_valid_number(string):

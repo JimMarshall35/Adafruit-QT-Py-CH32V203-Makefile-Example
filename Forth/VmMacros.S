@@ -2,6 +2,7 @@
 
 .equ UART_BASE2, 0x40004400
 .equ CELL_SIZE, 4
+.equ SHORT_SIZE, 2
 .equ DATA_STACK_MAX_SIZE, 32
 .equ RETURN_STACK_MAX_SIZE, 64
 
@@ -23,6 +24,8 @@
 .equ COMMENT_BIT, 2
 .equ FIND_TOKEN_ERROR_BIT, 4
 .equ NUM_IO_HEX_BIT, 8   # if not set, num io is decimal
+
+.extern RAM_START, 0x20000000
 
 .equ PRIMITIVE_WORD_BITMASK, 2
 
@@ -147,10 +150,26 @@
 \name\()_impl:
 .endm
 
+.macro decode_half_word_ptr \inHalfWordPtrReg, \outRawPtrReg
+    andi t0, \inHalfWordPtrReg, 1
+    beq t0, zero, 1f
+    # first bit is set, therefore this is an offset into the RAM
+    li t0, RAM_START
+    add \inHalfWordPtrReg, t0, \inHalfWordPtrReg
+    # reset 1 bit
+    li t0, ~1
+    and \inHalfWordPtrReg, \inHalfWordPtrReg, t0
+1:
+    mv \outRawPtrReg, \inHalfWordPtrReg
+
+.endm
+
+
 .macro secondary_word name
     PushReturnStack s0
     la s0, \name\()_ThreadBegin
-    lw t4, 0(s0)
+    lh t4, 0(s0)
+    decode_half_word_ptr t4, t5
     # DEBUG TRACE CODE BEGIN
     # mv a0, t4
     # call print_int
@@ -158,7 +177,7 @@
     # li a1, UART_BASE2
     # call puts
     # DEBUG TRACE CODE END
-    jalr ra, t4, 0
+    jalr ra, t5, 0
     .balign 4
 \name\()_ThreadBegin:
 .endm
@@ -185,10 +204,11 @@
 .endm
 
 
-
 .macro end_word
-    addi s0, s0, CELL_SIZE
-    lw t4, 0(s0)
+    addi s0, s0, SHORT_SIZE
+
+    lh t4, 0(s0)
+    decode_half_word_ptr t4, t5
     # DEBUG TRACE CODE BEGIN
     # mv a0, t4
     # call print_int
@@ -196,7 +216,7 @@
     # li a1, UART_BASE2
     # call puts
     # DEBUG TRACE CODE END
-    jalr ra, t4, 0
+    jalr ra, t5, 0
 .endm
 
 # Following 2 macros used to calculate branch labels within pre-compiled secondary words
@@ -214,3 +234,18 @@
 linened2: .ascii "\n\r\0"
 
 .balign 4
+
+
+#
+# Optimized for space:
+# instead of word sized raw pointers we write 16 bit offsets.
+# These are word aligned and so the bottom bit signifies whether an offset
+# to the RAM region or not
+#
+.macro impl_ptr ptr
+    .if \ptr >= RAM_START
+        .hword ((\ptr - RAM_START) | 1)  & 0xffff
+    .else
+        .hword \ptr & 0xffff
+    .endif
+.endm

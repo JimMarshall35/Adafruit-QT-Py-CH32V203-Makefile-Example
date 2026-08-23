@@ -326,13 +326,25 @@ word_header loadByte, "c@", PRIMITIVE_WORD_BITMASK, storeByte, store
     PushDataStack t3
     end_word
 
-word_header storeByte, "c!!", PRIMITIVE_WORD_BITMASK, branchIfZero, loadByte
+word_header storeByte, "c!!", PRIMITIVE_WORD_BITMASK, loadHalf, loadByte
     PopDataStack t2
     PopDataStack t3
     sb t3, 0(t2)
     end_word
 
-word_header branchIfZero, "b0", PRIMITIVE_WORD_BITMASK, branch, storeByte
+word_header loadHalf, "h@", PRIMITIVE_WORD_BITMASK, storeHalf, storeByte
+    PopDataStack t2
+    lh t3, 0(t2)
+    PushDataStack t3
+    end_word
+
+word_header storeHalf, "h!!", PRIMITIVE_WORD_BITMASK, branchIfZero, loadHalf
+    PopDataStack t2
+    PopDataStack t3
+    sh t3, 0(t2)
+    end_word
+
+word_header branchIfZero, "b0", PRIMITIVE_WORD_BITMASK, branch, storeHalf
     PopDataStack t2
     mv t1, s0 # s0 == PC
     beq t2, zero, 1f
@@ -361,8 +373,9 @@ word_header forth_add, "+", 0, literal, branch
     end_word
     
 word_header literal, "literal", PRIMITIVE_WORD_BITMASK, dup, forth_add
-    addi s0, s0, CELL_SIZE
+    addi s0, s0, SHORT_SIZE
     lw t3, 0(s0)
+    addi s0, s0, SHORT_SIZE
     PushDataStack t3
     end_word
 

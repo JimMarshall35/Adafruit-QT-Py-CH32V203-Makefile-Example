@@ -191,11 +191,23 @@ asm_name lte
 
 : , ( word2compile -- ) here ! here CELL_SIZE + setHere ;
 
+
 asm_name cw
 
 : cr ( -- ) 10 13 emit emit ;
 
 : c, ( byte2compile -- ) here c! here 1 + setHere ;
+
+: h, ( byte2compile -- ) here h! here 2 + setHere ;
+
+: ,ptr ( ptrToCompile -- )
+    dup RAM_START >= if
+        RAM_START - ( offset into ram )
+        1 |         ( set lowest bit to signify ram offset )  
+    then
+    h,
+;
+
 
 asm_name cbyte
 
